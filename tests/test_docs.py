@@ -109,6 +109,7 @@ class DocumentationTests(unittest.TestCase):
             "- [ ] Create the annotated tag with `git tag -a v0.1.0 -m \"Senior Sol v0.1.0\"`.",
             "- [ ] Push tag `v0.1.0` with `git push origin v0.1.0`.",
             "- [ ] Create the GitHub Release with `gh release create v0.1.0 --title \"Senior Sol v0.1.0\" --notes-file docs/release-checklist.md`.",
+            "- [ ] Verify installation once more from the tagged GitHub marketplace and preserve the final new-thread transcript.",
         ]
         for item in pending_publication_items:
             with self.subTest(pending_publication_item=item):
