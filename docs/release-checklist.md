@@ -21,9 +21,9 @@ Publication is manual. Leave each item unchecked until its command or observatio
 
 ## Marketplace installation and smoke evidence
 
-- [ ] Add the marketplace from GitHub with `codex plugin marketplace add sergyanin/senior-sol`.
-- [ ] Complete marketplace installation with `codex plugin add senior-sol@senior-sol`.
-- [ ] Install all five managed profiles with the OS-appropriate repository script.
+- [x] Add the marketplace from GitHub with `codex plugin marketplace add sergyanin/senior-sol`. **Verified 2026-07-15; marketplace `senior-sol` is configured from the public repository.**
+- [x] Complete marketplace installation with `codex plugin add senior-sol@senior-sol`. **Verified 2026-07-15; plugin version `0.1.0` is installed and enabled in the Codex cache.**
+- [x] Install all five managed profiles with the OS-appropriate repository script. **Verified 2026-07-15; all five `senior-sol-*.toml` files are present under `$CODEX_HOME/agents`.**
 - [ ] Open a new Codex thread after profile installation so custom agents are discovered.
 - [ ] In the new thread, select Sol and its intended reasoning level before invoking `$senior-sol`.
 - [ ] Execute and record Scenario 1, Luna mechanical edit.
