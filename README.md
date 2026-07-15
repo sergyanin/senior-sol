@@ -82,7 +82,19 @@ codex plugin remove senior-sol@senior-sol
 codex plugin add senior-sol@senior-sol
 ```
 
-Then rerun `install-agents.ps1 -Force` on Windows or `install-agents.sh --force` on POSIX and open a new Codex thread.
+From the updated repository checkout, replace the managed profiles on Windows:
+
+```powershell
+powershell -NoProfile -File plugins/senior-sol/scripts/install-agents.ps1 -Force
+```
+
+Or replace them on POSIX:
+
+```sh
+sh plugins/senior-sol/scripts/install-agents.sh --force
+```
+
+Then open a new Codex thread so Codex discovers the updated plugin and profiles.
 
 ## Uninstall
 

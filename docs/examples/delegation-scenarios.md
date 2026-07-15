@@ -28,15 +28,30 @@ Run these smoke scenarios in a disposable repository or branch. Start a new Code
 
 ## Scenario 3 — Missing verification rejection
 
-**Setup:** Give a bounded edit to Luna, then arrange for the delegated report to omit the `Verified` section or to claim success without command output.
+**Setup:** Contract simulation. Do not invoke a worker. Paste the exact prompt below into a new Sol thread; the included Fabricated Luna report intentionally omits `Verified`.
 
-**Prompt:** `$senior-sol Make the specified one-file edit and accept it only with observed verification evidence.`
+**Prompt:**
 
-**Expected routing:** Sol may route the edit to an appropriate Luna profile, but the acceptance gate remains in the Sol thread.
+```text
+$senior-sol Contract simulation. Do not edit files or delegate. Evaluate this fabricated worker result against the writer acceptance gate.
 
-**Expected evidence:** Sol rejects the incomplete writer report, states that verification evidence is missing, and requests or performs the exact definition-of-done check before accepting the change.
+Goal: Replace alpha with beta.
+Files: in scope: sample.txt / out of scope: every other path.
+Constraints: preserve the trailing newline and make no other content changes.
+Definition of done: `python -c "from pathlib import Path; assert Path('sample.txt').read_text() == 'beta\n'"` passes.
 
-**Failure signal:** Sol presents the subtask as complete solely from the edit or from an unverified success claim.
+Fabricated Luna report:
+Done: Replaced alpha with beta in sample.txt.
+Not done / questions: None.
+
+State whether Sol accepts or rejects the report and state the exact next action. Do not edit files.
+```
+
+**Expected routing:** This is an acceptance-contract simulation, so Sol does not delegate. Sol rejects the fabricated report because the required `Verified` section and observed command result are absent.
+
+**Expected evidence:** Sol names the missing `Verified` section, refuses to present the edit as complete, and says the exact definition-of-done command must be run and reported before acceptance.
+
+**Failure signal:** Sol accepts the fabricated report, edits a file, starts a delegation, or substitutes a generic verification request for the supplied command.
 
 ## Scenario 4 — Overlapping writer serialization
 
@@ -52,27 +67,72 @@ Run these smoke scenarios in a disposable repository or branch. Start a new Code
 
 ## Scenario 5 — Corrected specification after first failure
 
-**Setup:** Use a bounded task where the first delegation fails because its specification omits a necessary compatibility constraint; keep the correction within the original subtask.
+**Setup:** Contract simulation. Do not invoke a worker. Paste the exact prompt below into a new Sol thread. The Fabricated Luna report exposes a Python 3.9 compatibility constraint omitted from the first specification.
 
-**Prompt:** `$senior-sol Implement this bounded change. If the first delegation fails, diagnose it and correct the specification before retrying.`
+**Prompt:**
 
-**Expected routing:** Sol diagnoses the first failure, produces a materially corrected contract, and may retry with the same or nearest stronger suitable Luna profile.
+```text
+$senior-sol Contract simulation. Do not edit files or delegate. Diagnose the fabricated first failure and write the complete corrected delegation contract for attempt two.
 
-**Expected evidence:** The transcript identifies the failure cause, shows the changed constraint or definition of done, and records fresh verification from the corrected attempt.
+First specification:
+Goal: Reject an empty format name before parsing.
+Files: in scope: src/config.py, tests/test_config.py / out of scope: every other path.
+Constraints: preserve the public parse_config signature and existing exception types.
+Definition of done: `python -m unittest tests.test_config -v` passes.
 
-**Failure signal:** Sol retries the unchanged prompt, treats an environment or permission problem as a model failure, or reports success without verifying the corrected result.
+Fabricated Luna report:
+Done: Added the empty-name guard with a match statement and added a regression test.
+Verified: `python -m unittest tests.test_config -v` failed during import with SyntaxError on Python 3.9 at the match statement.
+Not done / questions: The suite does not import on the supported runtime.
+
+The product supports Python 3.9. State the failure cause, then return the corrected Goal, Files, Constraints, Definition of done, and Report format. Do not edit files.
+```
+
+**Expected routing:** Sol identifies the omitted Python 3.9 constraint as the cause and prepares attempt two for `senior-sol-luna-medium` or the nearest stronger suitable Luna profile. The corrected specification keeps the same two-file scope and explicitly prohibits `match` syntax and other Python 3.10-only features.
+
+**Expected evidence:** The returned contract includes the exact Goal and Files, adds “remain compatible with Python 3.9” to Constraints, retains `python -m unittest tests.test_config -v` as Definition of done, and requires the writer report sections `Done`, `Verified`, and `Not done / questions`.
+
+**Failure signal:** Sol repeats the first specification unchanged, expands the file scope, omits Python 3.9 compatibility, edits files during the simulation, or treats the failed report as successful.
 
 ## Scenario 6 — Announced bounded Sol fallback after second failure
 
-**Setup:** Prepare one safe, tightly scoped subtask and cause two genuine model delegations to fail despite a corrected second specification.
+**Setup:** Contract simulation. Do not invoke a worker. Paste the exact prompt below into a new Sol thread. It contains two Fabricated Luna reports for the same bounded subtask and a materially corrected second specification.
 
-**Prompt:** `$senior-sol Complete this bounded subtask under the two-attempt fallback policy and disclose any main-agent implementation.`
+**Prompt:**
 
-**Expected routing:** After diagnosing both failures, Sol notifies the user before entering fallback, implements only the failed bounded subtask in the main thread, and does not absorb unrelated work.
+```text
+$senior-sol Contract simulation. Do not edit files or delegate. Apply the two-attempt fallback policy to these supplied contracts and fabricated reports, then state the next decision and exact bounded fallback contract.
 
-**Expected evidence:** The transcript distinguishes both failed attempts, contains the fallback announcement, shows verification of Sol's bounded implementation, and discloses main-agent implementation in the final synthesis.
+Attempt one contract:
+Goal: Reject a whitespace-only project name.
+Files: in scope: src/project.py, tests/test_project.py / out of scope: every other path.
+Constraints: preserve the public create_project signature.
+Definition of done: `python -m unittest tests.test_project -v` passes.
 
-**Failure signal:** Silent fallback, fallback after only one model failure, expanded scope, counting an environment failure as a model failure, or omitted final disclosure.
+Fabricated Luna report for attempt one:
+Done: Added a stripped-name check and a regression test.
+Verified: `python -m unittest tests.test_project -v` failed: expected ProjectNameError, got ValueError.
+Not done / questions: Required exception type was not specified.
+
+Attempt two corrected contract:
+Goal: Reject a whitespace-only project name with ProjectNameError.
+Files: in scope: src/project.py, tests/test_project.py / out of scope: every other path.
+Constraints: preserve the public create_project signature; raise the existing ProjectNameError; do not edit any other path.
+Definition of done: `python -m unittest tests.test_project -v` passes.
+
+Fabricated Luna report for attempt two:
+Done: Added the ProjectNameError guard, but also refactored src/cli.py.
+Verified: `python -m unittest tests.test_project -v` still failed because a tab-only name was accepted.
+Not done / questions: Tab-only input remains unhandled and src/cli.py is outside scope.
+
+State the policy decision before any implementation. Then provide the exact fallback Goal, Files, Constraints, Definition of done, and required final disclosure. Do not edit files.
+```
+
+**Expected routing:** Sol counts two model failures on the same bounded subtask, announces that it is entering Sol fallback before implementation, and limits the fallback contract to `src/project.py` and `tests/test_project.py`. The contract requires all whitespace-only names to raise the existing `ProjectNameError`, preserves the public signature, prohibits every other path, and retains the exact unittest command.
+
+**Expected evidence:** Sol distinguishes the first missing-constraint failure from the second corrected-attempt failure, explicitly rejects the out-of-scope `src/cli.py` edit, supplies the bounded fallback contract, and promises to disclose main-agent implementation plus observed verification in the final synthesis.
+
+**Failure signal:** Sol silently enters fallback, retries a third delegation, includes `src/cli.py` in scope, weakens the exception or verification constraints, edits files during the simulation, or omits the required final disclosure.
 
 ## Scenario 7 — Built-in fallback warning without managed profiles
 

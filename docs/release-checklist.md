@@ -6,8 +6,8 @@ Publication is manual. Leave each item unchecked until its command or observatio
 
 - [ ] On Windows, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures.
 - [ ] On macOS or Linux, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures.
-- [ ] Run repository validation with `python scripts/validate.py` and record `Repository metadata is valid.`
-- [ ] Complete official plugin validation for `.agents/plugins/marketplace.json` and `plugins/senior-sol/.codex-plugin/plugin.json`; attach the successful output.
+- [ ] Run repository and marketplace validation with `python scripts/validate.py` and record `Repository metadata is valid.`
+- [ ] Run official plugin validation for `plugins/senior-sol` from PowerShell with `python (Join-Path $HOME '.codex\skills\.system\plugin-creator\scripts\validate_plugin.py') plugins\senior-sol`; attach the successful output. This validator checks the plugin directory, not the marketplace file.
 - [ ] Confirm the PowerShell and POSIX installer tests cover clean install, idempotent install, conflict refusal, forced replacement, and safe uninstall.
 - [ ] Check tracked public files for secrets, credentials, private data, and developer-specific local paths; record the command and result.
 
