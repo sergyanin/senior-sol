@@ -35,7 +35,7 @@ INCOMPLETE_MARKER = re.compile(
     re.IGNORECASE,
 )
 LOCAL_ABSOLUTE_PATH = re.compile(
-    r"(?:[A-Za-z]:[\\/](?![\\/])|(?<![A-Za-z0-9@])/(?:Users|home)/)[^\s`\"']+"
+    r"(?:[A-Za-z]:(?:\\\\|[\\/](?![\\/]))|(?<![A-Za-z0-9@])/(?:Users|home)/)[^\s`\"']+"
 )
 
 
@@ -68,16 +68,26 @@ def _public_runtime_text_files(root: Path) -> list[Path]:
     return sorted(path for path in files if path.suffix.lower() in TEXT_SUFFIXES)
 
 
+def _load_json(path: Path, label: str, errors: list[str]) -> object:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        errors.append(f"cannot read {label} {path.as_posix()}: {exc}")
+        return {}
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        errors.append(f"invalid {label} {path.as_posix()}: {exc}")
+        return {}
+
+
 def validate_repository(root: Path) -> list[str]:
     errors: list[str] = []
     plugin = root / "plugins" / "senior-sol"
     manifest_path = plugin / ".codex-plugin" / "plugin.json"
     marketplace_path = root / ".agents" / "plugins" / "marketplace.json"
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        marketplace = json.loads(marketplace_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        return [str(exc)]
+    manifest = _load_json(manifest_path, "plugin manifest", errors)
+    marketplace = _load_json(marketplace_path, "marketplace", errors)
 
     manifest_is_object = isinstance(manifest, dict)
     marketplace_is_object = isinstance(marketplace, dict)

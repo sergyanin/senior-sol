@@ -141,6 +141,45 @@ class SkillValidatorTests(unittest.TestCase):
         self.assertTrue(any("skill" in error.lower() for error in errors))
         self.assertIn("missing managed agent profile: senior-sol-luna-low.toml", errors)
 
+    def test_validator_accumulates_independent_errors_with_bad_metadata(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            manifest_path = root / "plugins" / "senior-sol" / ".codex-plugin" / "plugin.json"
+            manifest_path.write_text("{not valid json", encoding="utf-8")
+            marketplace_path = root / ".agents" / "plugins" / "marketplace.json"
+            marketplace_path.unlink()
+            profile_path = root / "plugins" / "senior-sol" / "agents" / "senior-sol-luna-low.toml"
+            profile_path.unlink()
+            skill_path = root / "plugins" / "senior-sol" / "skills" / "senior-sol" / "SKILL.md"
+            skill_path.write_text(SKILL_TEXT.replace("name: senior-sol", "name: other", 1), encoding="utf-8")
+            public_file = root / "plugins" / "senior-sol" / "bad-note.md"
+            public_file.write_text("TODO inspect C:\\Users\\author\\plugin", encoding="utf-8")
+
+            errors = validate_repository(root)
+
+        self.assertTrue(any("plugin.json" in error for error in errors))
+        self.assertTrue(any("marketplace.json" in error for error in errors))
+        self.assertIn("missing managed agent profile: senior-sol-luna-low.toml", errors)
+        self.assertIn("Senior Sol skill frontmatter must declare name: senior-sol", errors)
+        self.assertIn("local absolute path found in plugins/senior-sol/bad-note.md", errors)
+        self.assertIn("incomplete marker found in plugins/senior-sol/bad-note.md", errors)
+
+    def test_validator_detects_json_escaped_windows_absolute_path(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            public_file = root / "plugins" / "senior-sol" / "escaped-path.json"
+            public_file.write_text(
+                json.dumps({"path": r"C:\Users\author\plugin"}),
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+        self.assertIn(
+            "local absolute path found in plugins/senior-sol/escaped-path.json",
+            errors,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
