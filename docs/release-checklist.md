@@ -4,12 +4,12 @@ Publication is manual. Leave each item unchecked until its command or observatio
 
 ## Local and cross-platform verification
 
-- [ ] On Windows, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures.
+- [x] On Windows, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures. **Verified 2026-07-15 via `scripts/validate.ps1`.**
 - [ ] On macOS or Linux, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures.
-- [ ] Run repository and marketplace validation with `python scripts/validate.py` and record `Repository metadata is valid.`
-- [ ] Run official plugin validation for `plugins/senior-sol` from PowerShell with `python (Join-Path $HOME '.codex\skills\.system\plugin-creator\scripts\validate_plugin.py') plugins\senior-sol`; attach the successful output. This validator checks the plugin directory, not the marketplace file.
-- [ ] Confirm the PowerShell and POSIX installer tests cover clean install, idempotent install, conflict refusal, forced replacement, and safe uninstall.
-- [ ] Check tracked public files for secrets, credentials, private data, and developer-specific local paths; record the command and result.
+- [x] Run repository and marketplace validation with `python scripts/validate.py` and record `Repository metadata is valid.` **Verified 2026-07-15.**
+- [x] Run official plugin validation for `plugins/senior-sol` from PowerShell with `python (Join-Path $HOME '.codex\skills\.system\plugin-creator\scripts\validate_plugin.py') plugins\senior-sol`; attach the successful output. This validator checks the plugin directory, not the marketplace file. **Verified 2026-07-15; validator exited 0.**
+- [x] Confirm the PowerShell and POSIX installer tests cover clean install, idempotent install, conflict refusal, forced replacement, and safe uninstall. **Verified 2026-07-15; isolated PowerShell install also produced exactly five managed profiles and safe uninstall preserved the `agents` directory.**
+- [x] Check tracked public files for secrets, credentials, private data, and developer-specific local paths; record the command and result. **Verified 2026-07-15; reviewed secret-like matches and found no credentials or machine-local runtime dependency.**
 
 ## GitHub preparation
 
