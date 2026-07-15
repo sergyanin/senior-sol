@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- Release version is exactly `0.1.0`; Git tag is exactly `v0.1.0`.
+- Release version is exactly `0.1.0`; validate it in `plugin.json` and release/tag metadata because marketplace entries have no version field; Git tag is exactly `v0.1.0`.
 - Plugin, package folder, marketplace entry, and skill are named `senior-sol`.
-- GitHub repository is `sergyanin/senior-sol`.
+- Authenticated GitHub-owner lookup with `gh api user --jq .login` is a prerequisite and yielded `sergyanin`; therefore the GitHub repository is `sergyanin/senior-sol`.
 - The user chooses the main Sol model and reasoning level; the plugin never overrides either.
 - Managed subagent profiles are exactly `senior-sol-luna-low`, `senior-sol-luna-medium`, `senior-sol-terra-low`, `senior-sol-terra-medium`, and `senior-sol-terra-high`.
 - Terra profiles are read-only; Luna profiles inherit the parent write sandbox and are constrained by the delegation file scope.
@@ -20,7 +20,11 @@
 - No MCP server, custom scheduler, GUI, telemetry, automated release publication, or non-Sol/Terra/Luna model support in v0.1.0.
 - Runtime and test code use only platform tools and the Python standard library.
 - Installers never overwrite conflicting agent files unless the user passes `--force` or `-Force`.
+- Installers reject an `agents` directory or managed destination that is a directory, symlink, or reparse redirection, including in force mode; recursive test cleanup paths are verified under the system temp directory.
 - Uninstallers touch only the five exact managed filenames and never remove the containing `agents` directory.
+- Sol accepts writer work only after inspecting actual changed paths/content and independently rerunning or directly observing the exact definition-of-done check.
+- An unavailable installed model/effort is not a model failure: retry once with the nearest same-role profile (Terra remains read-only), then warn and offer built-in `worker`/`explorer` without incrementing the two-failure counter.
+- Repository validation enforces every required marketplace/plugin field and shape, including exact policy/capabilities and plugin version `0.1.0`; marketplace entries have no version field.
 - README and public-facing plugin copy are English; the design specification remains Russian.
 
 ---
@@ -594,7 +598,7 @@ Use the concrete contract text above in the actual skill and add one fully speci
 
 - [ ] **Step 4: Extend repository validation for skill integrity**
 
-Update `validate_repository` to require the skill path from `manifest["skills"]`, parse the opening YAML-like frontmatter delimiters, require `name: senior-sol`, scan runtime and public tracked text for local absolute paths and incomplete markers while excluding `docs/superpowers/`, and return errors instead of exiting early.
+Update `validate_repository` to require the skill path from `manifest["skills"]`, parse the opening YAML-like frontmatter delimiters, require `name: senior-sol`, and use `git ls-files` (with an explicit complete fallback for isolated tests) to scan every public tracked text file, including `.github/` and tests. Exclude only design/plan artifacts under `docs/superpowers/`; reject nontrivial credential assignments, broad Windows/Unix machine-local absolute paths, and incomplete markers without treating documentation URLs or the detector's own source as findings. Return errors instead of exiting early.
 
 - [ ] **Step 5: Run skill, metadata, and profile tests**
 
@@ -659,7 +663,7 @@ Write the standard MIT license with `Copyright (c) 2026 sergyanin`.
 
 - [ ] **Step 4: Write the seven manual smoke scenarios**
 
-For each scenario, include Setup, Prompt, Expected routing, Expected evidence, and Failure signal. The seven cases are: Luna mechanical edit; Terra read-only investigation; missing verification rejection; overlapping writer serialization; corrected specification after first failure; announced bounded Sol fallback after second failure; built-in fallback warning when managed profiles are absent.
+For each scenario, include Setup, Prompt, Expected routing, Expected evidence, and Failure signal. The seven cases are: Luna mechanical edit; Terra read-only investigation; missing verification rejection with independent diff/check requirements; overlapping writer serialization; corrected specification after first failure; announced bounded Sol fallback after second failure; installed-profile availability routing plus built-in fallback warning (also covering missing profiles).
 
 - [ ] **Step 5: Write the release checklist**
 
@@ -808,7 +812,11 @@ Expected: clean status before checklist edits, all tests pass, official validato
 Run:
 
 ```powershell
-$tempHome = Join-Path $env:TEMP 'senior-sol-release-check'
+$tempRoot = [System.IO.Path]::GetFullPath($env:TEMP).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+$tempHome = [System.IO.Path]::GetFullPath((Join-Path $tempRoot 'senior-sol-release-check'))
+if (-not $tempHome.StartsWith($tempRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing recursive cleanup outside system temp"
+}
 Remove-Item -LiteralPath $tempHome -Recurse -Force -ErrorAction SilentlyContinue
 $env:CODEX_HOME = $tempHome
 powershell -NoProfile -File plugins/senior-sol/scripts/install-agents.ps1
@@ -821,7 +829,7 @@ Expected: exactly five managed names are listed; uninstall removes those files a
 
 - [ ] **Step 3: Audit tracked files for secrets and machine-local paths**
 
-Run:
+Run the enforced `python scripts/validate.py` tracked-file scan, which uses `git ls-files` and covers `.github/`, tests, and every other public tracked text file while excluding only `docs/superpowers/` design/plan artifacts. It rejects nontrivial credential assignments and broad Windows/Unix machine-local absolute paths while ignoring documentation URLs and detector-source literals. For an independent manual cross-check, run:
 
 ```powershell
 git grep -n -I -E 'BEGIN (RSA|OPENSSH|EC) PRIVATE KEY|api[_-]?key|secret|token' -- . ':!docs/superpowers/plans/*'

@@ -1,5 +1,6 @@
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -40,6 +41,16 @@ def copy_repository() -> tempfile.TemporaryDirectory:
     return directory
 
 
+def track_all_files(root: Path) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "core.autocrlf=false", "add", "."],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
 class SkillContractTests(unittest.TestCase):
     def test_frontmatter_declares_public_skill_name(self):
         self.assertTrue(SKILL_TEXT.startswith("---\n"))
@@ -65,6 +76,15 @@ class SkillContractTests(unittest.TestCase):
             self.assertIn(section, SKILL_TEXT)
         self.assertIn("One writer per file set.", SKILL_TEXT)
 
+    def test_writer_acceptance_requires_independent_diff_and_definition_of_done_evidence(self):
+        required_phrases = (
+            "inspect the actual changed paths and content",
+            "independently rerun or directly observe the exact Definition of done check",
+            "Only accept the writer result after both checks pass",
+        )
+        for phrase in required_phrases:
+            self.assertIn(phrase, SKILL_TEXT)
+
     def test_retry_and_fallback_policy_is_bounded_and_disclosed(self):
         required_phrases = (
             "never retry an unchanged specification",
@@ -74,6 +94,17 @@ class SkillContractTests(unittest.TestCase):
             "implement only that subtask",
             "verify it",
             "disclose the main-agent implementation in the final report",
+        )
+        for phrase in required_phrases:
+            self.assertIn(phrase, SKILL_TEXT)
+
+    def test_unavailable_managed_model_has_a_non_failure_route(self):
+        required_phrases = (
+            "does not count toward the two model-failure attempts",
+            "retry once with the nearest available profile of the same role",
+            "Terra remains read-only",
+            "warn the user and offer the built-in `worker` or `explorer` fallback",
+            "do not increment the fallback counter",
         )
         for phrase in required_phrases:
             self.assertIn(phrase, SKILL_TEXT)
@@ -117,10 +148,12 @@ class SkillValidatorTests(unittest.TestCase):
         with copy_repository() as directory:
             root = Path(directory)
             public_file = root / "plugins" / "senior-sol" / "skills" / "public-note.md"
-            public_file.write_text("TODO use C:\\Users\\author\\plugin", encoding="utf-8")
+            machine_path = "C:" + "\\Users\\author\\plugin"
+            marker = "TO" + "DO"
+            public_file.write_text(marker + " use " + machine_path, encoding="utf-8")
             excluded = root / "docs" / "superpowers" / "plan.md"
             excluded.parent.mkdir(parents=True)
-            excluded.write_text("TODO use C:\\Users\\author\\plugin", encoding="utf-8")
+            excluded.write_text(marker + " use " + machine_path, encoding="utf-8")
 
             errors = validate_repository(root)
 
@@ -153,7 +186,9 @@ class SkillValidatorTests(unittest.TestCase):
             skill_path = root / "plugins" / "senior-sol" / "skills" / "senior-sol" / "SKILL.md"
             skill_path.write_text(SKILL_TEXT.replace("name: senior-sol", "name: other", 1), encoding="utf-8")
             public_file = root / "plugins" / "senior-sol" / "bad-note.md"
-            public_file.write_text("TODO inspect C:\\Users\\author\\plugin", encoding="utf-8")
+            machine_path = "C:" + "\\Users\\author\\plugin"
+            marker = "TO" + "DO"
+            public_file.write_text(marker + " inspect " + machine_path, encoding="utf-8")
 
             errors = validate_repository(root)
 
@@ -169,7 +204,7 @@ class SkillValidatorTests(unittest.TestCase):
             root = Path(directory)
             public_file = root / "plugins" / "senior-sol" / "escaped-path.json"
             public_file.write_text(
-                json.dumps({"path": r"C:\Users\author\plugin"}),
+                json.dumps({"path": "C:" + "\\Users\\author\\plugin"}),
                 encoding="utf-8",
             )
 
@@ -179,6 +214,61 @@ class SkillValidatorTests(unittest.TestCase):
             "local absolute path found in plugins/senior-sol/escaped-path.json",
             errors,
         )
+
+    def test_validator_scans_tracked_github_and_test_files_for_credentials(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            workflow = root / ".github" / "workflows" / "leak.yml"
+            workflow.parent.mkdir(parents=True)
+            credential_key = "api_" + "key"
+            credential_value = "live-" + "credential-123456"
+            workflow.write_text(f'{credential_key}: "{credential_value}"\n', encoding="utf-8")
+            test_fixture = root / "tests" / "credential-fixture.txt"
+            test_fixture.write_text(f'{"access_" + "token"}={credential_value}\n', encoding="utf-8")
+            track_all_files(root)
+
+            errors = validate_repository(root)
+
+        self.assertIn("credential assignment found in .github/workflows/leak.yml", errors)
+        self.assertIn("credential assignment found in tests/credential-fixture.txt", errors)
+
+    def test_validator_detects_broad_windows_and_unix_machine_local_paths(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            fixture = root / "tests" / "local-paths.txt"
+            windows_path = "C:" + "\\build\\cache"
+            unix_path = "/op" + "t/private/cache"
+            fixture.write_text(f"{windows_path}\n{unix_path}\n", encoding="utf-8")
+            track_all_files(root)
+
+            errors = validate_repository(root)
+
+        self.assertIn("local absolute path found in tests/local-paths.txt", errors)
+
+    def test_validator_ignores_urls_env_references_detector_source_and_untracked_files(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            safe = root / "tests" / "safe-security-examples.txt"
+            credential_key = "api_" + "key"
+            safe.write_text(
+                "https://example.com/opt/install\n"
+                "https://docs.example.com/Users/guide\n"
+                f'{credential_key} = "${{{credential_key.upper()}}}"\n',
+                encoding="utf-8",
+            )
+            track_all_files(root)
+            untracked = root / "tests" / "untracked-secret.txt"
+            untracked.write_text(
+                ("password" + "=live-untracked-credential\n"),
+                encoding="utf-8",
+            )
+
+            errors = validate_repository(root)
+
+        security_errors = [
+            error for error in errors if "credential assignment" in error or "local absolute path" in error
+        ]
+        self.assertEqual(security_errors, [])
 
 
 if __name__ == "__main__":

@@ -76,9 +76,13 @@ The researcher report must use:
 
 Writer reports require Done, Verified, and Not done / questions. Research reports require Answer, Evidence, Ruled out, and Open questions. Reject missing sections, unverified success, or out-of-scope edits.
 
+A structurally valid writer report is evidence to investigate, not proof of completion. Sol must inspect the actual changed paths and content against the declared file scope and constraints. Sol must also independently rerun or directly observe the exact Definition of done check and record the observed result; a writer's quoted `Verified` claim alone is insufficient. Only accept the writer result after both checks pass.
+
 ## Failure and fallback policy
 
 After failure one, diagnose the cause and produce a materially corrected specification; never retry an unchanged specification. The second attempt may use the nearest stronger suitable profile. After two failed delegations for the same bounded subtask, notify the user that Sol is entering fallback, implement only that subtask, verify it, and disclose the main-agent implementation in the final report. Environment or permission failures do not count as model failures.
+
+If an installed managed profile cannot start because its model or reasoning effort is unavailable, that availability failure does not count toward the two model-failure attempts; retry once with the nearest available profile of the same role. Terra remains read-only when substituting any Terra profile. If no same-role managed profile can run, warn the user and offer the built-in `worker` or `explorer` fallback as appropriate, explain that its model and effort are not pinned, and do not increment the fallback counter.
 
 ## Final synthesis
 

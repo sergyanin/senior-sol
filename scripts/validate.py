@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -15,17 +17,6 @@ MANAGED_PROFILES = {
     "senior-sol-terra-high": ("gpt-5.6-terra", "high", True),
 }
 
-TEXT_SUFFIXES = {
-    ".json",
-    ".md",
-    ".ps1",
-    ".py",
-    ".sh",
-    ".toml",
-    ".txt",
-    ".yaml",
-    ".yml",
-}
 INCOMPLETE_MARKER = re.compile(
     r"\b(?:"
     + "|".join(
@@ -34,8 +25,46 @@ INCOMPLETE_MARKER = re.compile(
     + r")\b",
     re.IGNORECASE,
 )
+_UNIX_LOCAL_ROOTS = (
+    "Us" + "ers",
+    "ho" + "me",
+    "ro" + "ot",
+    "op" + "t",
+    "pri" + "vate",
+    "tm" + "p",
+    "va" + "r",
+    "et" + "c",
+    "mn" + "t",
+    "sr" + "v",
+    "work" + "space",
+    "us" + "r",
+)
 LOCAL_ABSOLUTE_PATH = re.compile(
-    r"(?:[A-Za-z]:(?:\\\\|[\\/](?![\\/]))|(?<![A-Za-z0-9@])/(?:Users|home)/)[^\s`\"']+"
+    r"(?:"
+    r"(?<![A-Za-z0-9])[A-Za-z]:(?:\\\\|[\\/](?![\\/]))[^\s`\"']+"
+    r"|(?<![A-Za-z0-9@])/(?:"
+    + "|".join(_UNIX_LOCAL_ROOTS)
+    + r")(?:/|\b)[^\s`\"']*"
+    r")"
+)
+DOCUMENTATION_URL = re.compile(r"\b(?:https?|git\+https)://[^\s`\"'<>]+", re.IGNORECASE)
+_CREDENTIAL_KEYS = (
+    "api_" + "key",
+    "api-" + "key",
+    "client_" + "secret",
+    "client-" + "secret",
+    "access_" + "token",
+    "access-" + "token",
+    "to" + "ken",
+    "pass" + "word",
+    "pass" + "wd",
+    "sec" + "ret",
+)
+CREDENTIAL_ASSIGNMENT = re.compile(
+    r"(?<![A-Za-z0-9_])(?:"
+    + "|".join(re.escape(key) for key in _CREDENTIAL_KEYS)
+    + r")[\s\"']*[:=]\s*(?P<value>[^#\r\n]+)",
+    re.IGNORECASE,
 )
 
 
@@ -55,17 +84,57 @@ def _frontmatter(text: str) -> dict[str, str] | None:
     return values
 
 
-def _public_runtime_text_files(root: Path) -> list[Path]:
-    files: set[Path] = set()
-    for directory in (root / ".agents", root / "docs", root / "plugins", root / "scripts"):
-        if directory.exists():
-            files.update(path for path in directory.rglob("*") if path.is_file())
-    files.update(
+def _tracked_files(root: Path) -> list[Path]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            check=False,
+            capture_output=True,
+        )
+    except OSError:
+        result = None
+    if result is not None and result.returncode == 0:
+        return sorted(
+            root / Path(os.fsdecode(item))
+            for item in result.stdout.split(b"\0")
+            if item
+        )
+    return sorted(
         path
-        for path in root.iterdir()
-        if path.is_file() and path.suffix.lower() in TEXT_SUFFIXES
+        for path in root.rglob("*")
+        if path.is_file() and ".git" not in path.relative_to(root).parts
     )
-    return sorted(path for path in files if path.suffix.lower() in TEXT_SUFFIXES)
+
+
+def _has_nontrivial_credential_assignment(text: str) -> bool:
+    placeholders = {
+        "",
+        "none",
+        "null",
+        "redacted",
+        "<redacted>",
+        "changeme",
+        "example",
+        "place" + "holder",
+        "***",
+    }
+    dynamic_prefixes = (
+        "${",
+        "$env:",
+        "os.environ",
+        "getenv(",
+        "process.env",
+        "secrets.",
+        "env[",
+    )
+    for match in CREDENTIAL_ASSIGNMENT.finditer(text):
+        value = match.group("value").strip().rstrip(",;").strip().strip("\"'").strip()
+        lowered = value.lower()
+        if lowered in placeholders or lowered.startswith(dynamic_prefixes):
+            continue
+        if len(value) >= 6 and any(character.isalnum() for character in value):
+            return True
+    return False
 
 
 def _load_json(path: Path, label: str, errors: list[str]) -> object:
@@ -99,34 +168,83 @@ def validate_repository(root: Path) -> list[str]:
         marketplace = {}
 
     if manifest.get("name") != plugin.name:
-        errors.append("plugin folder and manifest name must both be senior-sol")
+        errors.append("plugin name must be senior-sol")
     if manifest.get("version") != "0.1.0":
-        errors.append("plugin version must be 0.1.0")
+        errors.append("plugin version must be exactly 0.1.0")
+    if not isinstance(manifest.get("description"), str) or not manifest.get("description", "").strip():
+        errors.append("plugin description must be a non-empty string")
+    author = manifest.get("author")
+    if not isinstance(author, dict):
+        errors.append("plugin author must be a JSON object")
+    elif not isinstance(author.get("name"), str) or not author.get("name", "").strip():
+        errors.append("plugin author.name must be a non-empty string")
     skills_path = manifest.get("skills")
     if skills_path != "./skills/":
         errors.append("plugin skills path must be ./skills/")
+    if manifest.get("license") != "MIT":
+        errors.append("plugin license must be MIT")
+    if manifest.get("repository") != "https://github.com/sergyanin/senior-sol":
+        errors.append("plugin repository must be https://github.com/sergyanin/senior-sol")
     interface = manifest.get("interface", {})
     if not isinstance(interface, dict):
         errors.append("plugin interface must be a JSON object")
-    elif interface.get("capabilities") != ["Read", "Write"]:
-        errors.append("plugin capabilities must be exactly Read and Write")
+    else:
+        for field in (
+            "displayName",
+            "shortDescription",
+            "longDescription",
+            "developerName",
+            "category",
+        ):
+            value = interface.get(field)
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"plugin interface.{field} must be a non-empty string")
+        if interface.get("capabilities") != ["Read", "Write"]:
+            errors.append("plugin capabilities must be exactly Read and Write")
+        default_prompt = interface.get("defaultPrompt")
+        if (
+            not isinstance(default_prompt, list)
+            or not default_prompt
+            or any(not isinstance(item, str) or not item.strip() for item in default_prompt)
+        ):
+            errors.append(
+                "plugin interface.defaultPrompt must be a non-empty list of non-empty strings"
+            )
+
+    if marketplace.get("name") != "senior-sol":
+        errors.append("marketplace name must be senior-sol")
+    marketplace_interface = marketplace.get("interface")
+    if not isinstance(marketplace_interface, dict):
+        errors.append("marketplace interface must be a JSON object")
+    elif marketplace_interface.get("displayName") != "Senior Sol":
+        errors.append("marketplace displayName must be Senior Sol")
     entries = marketplace.get("plugins", [])
     if not isinstance(entries, list):
         errors.append("marketplace plugins must be a JSON array")
         entries = []
     if marketplace_is_object and len(entries) != 1:
-        errors.append("marketplace must contain exactly the senior-sol plugin")
+        errors.append("marketplace must contain exactly one plugin entry")
     if len(entries) == 1 and not isinstance(entries[0], dict):
         errors.append("marketplace plugin entry must be a JSON object")
     elif len(entries) == 1:
         entry = entries[0]
-        if entry.get("name") != manifest.get("name"):
-            errors.append("marketplace must contain exactly the senior-sol plugin")
+        if entry.get("name") != "senior-sol":
+            errors.append("marketplace plugin entry name must be senior-sol")
         source = entry.get("source", {})
         if not isinstance(source, dict):
             errors.append("marketplace plugin source must be a JSON object")
-        elif source.get("path") != "./plugins/senior-sol":
-            errors.append("marketplace source path must be ./plugins/senior-sol")
+        else:
+            if source.get("source") != "local":
+                errors.append("marketplace source.source must be local")
+            if source.get("path") != "./plugins/senior-sol":
+                errors.append("marketplace source path must be ./plugins/senior-sol")
+        policy = entry.get("policy")
+        if not isinstance(policy, dict):
+            errors.append("marketplace policy must be a JSON object")
+        elif policy != {"installation": "AVAILABLE", "authentication": "ON_INSTALL"}:
+            errors.append("marketplace policy must be exactly AVAILABLE/ON_INSTALL")
+        if entry.get("category") != "Productivity":
+            errors.append("marketplace category must be Productivity")
 
     agent_dir = plugin / "agents"
     actual_profiles = {path.stem for path in agent_dir.glob("*.toml")}
@@ -176,19 +294,24 @@ def validate_repository(root: Path) -> list[str]:
             elif metadata.get("name") != "senior-sol":
                 errors.append("Senior Sol skill frontmatter must declare name: senior-sol")
 
-    for path in _public_runtime_text_files(root):
+    for path in _tracked_files(root):
         relative = path.relative_to(root).as_posix()
         if relative.startswith("docs/superpowers/"):
             continue
         try:
             text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
+        except UnicodeDecodeError:
+            continue
+        except OSError as exc:
             errors.append(f"cannot scan tracked text {relative}: {exc}")
             continue
-        if LOCAL_ABSOLUTE_PATH.search(text):
+        without_urls = DOCUMENTATION_URL.sub("", text)
+        if LOCAL_ABSOLUTE_PATH.search(without_urls):
             errors.append(f"local absolute path found in {relative}")
         if INCOMPLETE_MARKER.search(text):
             errors.append(f"incomplete marker found in {relative}")
+        if _has_nontrivial_credential_assignment(text):
+            errors.append(f"credential assignment found in {relative}")
     return errors
 
 

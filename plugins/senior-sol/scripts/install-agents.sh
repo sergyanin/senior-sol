@@ -27,7 +27,22 @@ codex_home="${CODEX_HOME:-${HOME}/.codex}"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 source_dir=$(CDPATH= cd -- "$script_dir/../agents" && pwd)
 target_dir="$codex_home/agents"
-mkdir -p -- "$target_dir" || exit 1
+if [ -L "$target_dir" ]; then
+    printf 'refusing redirected agents directory: %s\n' "$target_dir" >&2
+    exit 1
+fi
+if [ -e "$target_dir" ]; then
+    if [ ! -d "$target_dir" ]; then
+        printf 'agents target exists but is not a directory: %s\n' "$target_dir" >&2
+        exit 1
+    fi
+else
+    mkdir -- "$target_dir" || exit 1
+fi
+if [ -L "$target_dir" ] || [ ! -d "$target_dir" ]; then
+    printf 'agents target is not a real directory: %s\n' "$target_dir" >&2
+    exit 1
+fi
 
 had_conflict=0
 for name in \
@@ -40,7 +55,10 @@ do
     origin="$source_dir/$name"
     destination="$target_dir/$name"
 
-    if [ ! -e "$destination" ]; then
+    if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -f "$destination" ]; }; then
+        printf 'refusing non-file or redirected managed destination: %s\n' "$destination" >&2
+        exit 1
+    elif [ ! -e "$destination" ]; then
         cp "$origin" "$destination" || exit 1
         printf 'created: %s\n' "$name"
     elif cmp -s "$origin" "$destination"; then

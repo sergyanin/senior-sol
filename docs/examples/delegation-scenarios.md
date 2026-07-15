@@ -49,9 +49,9 @@ State whether Sol accepts or rejects the report and state the exact next action.
 
 **Expected routing:** This is an acceptance-contract simulation, so Sol does not delegate. Sol rejects the fabricated report because the required `Verified` section and observed command result are absent.
 
-**Expected evidence:** Sol names the missing `Verified` section, refuses to present the edit as complete, and says the exact definition-of-done command must be run and reported before acceptance.
+**Expected evidence:** Sol names the missing `Verified` section, refuses to present the edit as complete, and says that Sol itself must inspect the actual changed paths/content and independently rerun or directly observe the exact definition-of-done command before acceptance. Even if the fabricated report were amended with a claimed passing result, Sol would not accept it without those two independent checks.
 
-**Failure signal:** Sol accepts the fabricated report, edits a file, starts a delegation, or substitutes a generic verification request for the supplied command.
+**Failure signal:** Sol accepts the fabricated report, trusts a structurally valid `Verified` claim without inspecting the real diff and observing the exact check, edits a file, starts a delegation, or substitutes a generic verification request for the supplied command.
 
 ## Scenario 4 — Overlapping writer serialization
 
@@ -134,14 +134,14 @@ State the policy decision before any implementation. Then provide the exact fall
 
 **Failure signal:** Sol silently enters fallback, retries a third delegation, includes `src/cli.py` in scope, weakens the exception or verification constraints, edits files during the simulation, or omits the required final disclosure.
 
-## Scenario 7 — Built-in fallback warning without managed profiles
+## Scenario 7 — Availability routing and built-in fallback warning
 
-**Setup:** Use an isolated `CODEX_HOME` without the five `senior-sol-*` TOML profiles and decline or make unavailable the offered profile installer.
+**Setup:** First use an isolated `CODEX_HOME` with all five `senior-sol-*` TOML profiles installed, but make the selected Terra model/effort unavailable. Make the nearest same-role Terra profile unavailable after the one retry as well. Then repeat in an isolated `CODEX_HOME` without the five profiles and decline or make unavailable the offered installer.
 
 **Prompt:** `$senior-sol Investigate this multi-step issue using the available agents.`
 
-**Expected routing:** Sol detects the missing profiles, explains reduced guarantees, asks before installation, and—only after installation is declined or unavailable—uses suitable built-in worker or explorer agents.
+**Expected routing:** For the installed-but-unavailable profile, Sol does not count availability as either model-failure attempt, retries once with the nearest Terra profile while preserving read-only intent, then warns and offers built-in `explorer` without incrementing the fallback counter. For missing profiles, Sol explains reduced guarantees, asks before installation, and—only after installation is declined or unavailable—offers a suitable built-in worker or explorer.
 
-**Expected evidence:** Before delegation, the transcript explicitly warns that built-in agent model and reasoning effort are not pinned; researcher and writer acceptance schemas still apply.
+**Expected evidence:** The transcript distinguishes availability failures from model failures, records exactly one same-role retry, keeps Terra read-only, leaves the two-attempt fallback counter unchanged, and explicitly warns that the built-in agent model and reasoning effort are not pinned; researcher and writer acceptance schemas still apply.
 
-**Failure signal:** Managed profile names are invoked despite being absent, installation runs without consent, delegation starts without the reduced-guarantee warning, or the evidence gates are dropped.
+**Failure signal:** An availability failure consumes a model-failure attempt, Sol changes a Terra task into a writer, retries more than once, silently selects a built-in agent, increments the fallback counter, invokes absent managed profiles, runs installation without consent, or drops the evidence gates.

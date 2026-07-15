@@ -18,13 +18,36 @@ try {
     $target = Join-Path $codexHome 'agents'
     $hadConflict = $false
 
-    New-Item -ItemType Directory -Path $target -Force | Out-Null
+    $targetItem = Get-Item -LiteralPath $target -Force -ErrorAction SilentlyContinue
+    if ($null -ne $targetItem) {
+        if ($targetItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+            throw "Refusing redirected agents directory: $target"
+        }
+        if (-not $targetItem.PSIsContainer) {
+            throw "Agents target exists but is not a directory: $target"
+        }
+    }
+    else {
+        New-Item -ItemType Directory -Path $target | Out-Null
+        $targetItem = Get-Item -LiteralPath $target -Force
+        if (($targetItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -or -not $targetItem.PSIsContainer) {
+            throw "Agents target is not a real directory: $target"
+        }
+    }
 
     foreach ($name in $names) {
         $origin = Join-Path $source $name
         $destination = Join-Path $target $name
 
-        if (-not (Test-Path -LiteralPath $destination)) {
+        $destinationItem = Get-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+        if ($null -ne $destinationItem -and (
+            $destinationItem.PSIsContainer -or
+            ($destinationItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
+        )) {
+            throw "Refusing non-file or redirected managed destination: $destination"
+        }
+
+        if ($null -eq $destinationItem) {
             Copy-Item -LiteralPath $origin -Destination $destination
             Write-Output "created: $name"
         }

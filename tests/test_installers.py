@@ -51,7 +51,15 @@ class InstallerContract:
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
-        self.codex_home = Path(self.temporary_directory.name)
+        self.workspace = Path(self.temporary_directory.name).resolve()
+        system_temp = Path(tempfile.gettempdir()).resolve()
+        self.assertEqual(
+            os.path.commonpath((str(self.workspace), str(system_temp))),
+            str(system_temp),
+            "recursive TemporaryDirectory cleanup must stay under the system temp directory",
+        )
+        self.codex_home = self.workspace / "codex-home"
+        self.codex_home.mkdir()
         self.target = self.codex_home / "agents"
 
     def install(self, *args):
@@ -97,6 +105,51 @@ class InstallerContract:
         self.assertEqual(forced.returncode, 0, forced.stderr)
         self.assertIn(f"replaced: {name}", forced.stdout)
         self.assertEqual(destination.read_bytes(), (PLUGIN / "agents" / name).read_bytes())
+
+    def test_managed_destination_directory_is_rejected_even_with_force(self):
+        self.target.mkdir()
+        name = "senior-sol-luna-low.toml"
+        destination = self.target / name
+        destination.mkdir()
+
+        for argument in ((), (self.force_argument,)):
+            with self.subTest(argument=argument):
+                result = self.install(*argument)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(destination.is_dir())
+                self.assertFalse(any(destination.iterdir()))
+
+    def test_managed_destination_symlink_is_rejected_even_with_force(self):
+        self.target.mkdir()
+        name = "senior-sol-luna-low.toml"
+        outside = self.workspace / "outside-managed.toml"
+        outside.write_text("outside\n", encoding="utf-8")
+        destination = self.target / name
+        try:
+            destination.symlink_to(outside)
+        except OSError as exc:
+            self.skipTest(f"symlink creation unavailable on this platform: {exc}")
+
+        for argument in ((), (self.force_argument,)):
+            with self.subTest(argument=argument):
+                result = self.install(*argument)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(destination.is_symlink())
+                self.assertEqual(outside.read_text(encoding="utf-8"), "outside\n")
+
+    def test_agents_directory_symlink_is_rejected_without_writing_through_it(self):
+        outside = self.workspace / "outside-agents"
+        outside.mkdir()
+        try:
+            self.target.symlink_to(outside, target_is_directory=True)
+        except OSError as exc:
+            self.skipTest(f"directory symlink creation unavailable on this platform: {exc}")
+
+        result = self.install(self.force_argument)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertTrue(self.target.is_symlink())
+        self.assertEqual(list(outside.iterdir()), [])
 
     def test_uninstall_removes_managed_files_and_preserves_unrelated_file(self):
         self.assertEqual(self.install().returncode, 0)
