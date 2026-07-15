@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import json
 import sys
+import tomllib
 from pathlib import Path
+
+
+MANAGED_PROFILES = {
+    "senior-sol-luna-low": ("gpt-5.6-luna", "low", False),
+    "senior-sol-luna-medium": ("gpt-5.6-luna", "medium", False),
+    "senior-sol-terra-low": ("gpt-5.6-terra", "low", True),
+    "senior-sol-terra-medium": ("gpt-5.6-terra", "medium", True),
+    "senior-sol-terra-high": ("gpt-5.6-terra", "high", True),
+}
 
 
 def validate_repository(root: Path) -> list[str]:
@@ -49,6 +59,39 @@ def validate_repository(root: Path) -> list[str]:
             errors.append("marketplace plugin source must be a JSON object")
         elif source.get("path") != "./plugins/senior-sol":
             errors.append("marketplace source path must be ./plugins/senior-sol")
+
+    agent_dir = plugin / "agents"
+    actual_profiles = {path.stem for path in agent_dir.glob("*.toml")}
+    expected_profiles = set(MANAGED_PROFILES)
+    for name in sorted(expected_profiles - actual_profiles):
+        errors.append(f"missing managed agent profile: {name}.toml")
+    for name in sorted(actual_profiles - expected_profiles):
+        errors.append(f"unexpected agent profile: {name}.toml")
+
+    for name in sorted(expected_profiles & actual_profiles):
+        profile_path = agent_dir / f"{name}.toml"
+        try:
+            profile = tomllib.loads(profile_path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            errors.append(f"invalid agent profile {name}.toml: {exc}")
+            continue
+
+        model, effort, read_only = MANAGED_PROFILES[name]
+        if profile.get("name") != name:
+            errors.append(f"agent profile {name}.toml must declare name {name}")
+        if profile.get("model") != model:
+            errors.append(f"agent profile {name}.toml must use model {model}")
+        if profile.get("model_reasoning_effort") != effort:
+            errors.append(f"agent profile {name}.toml must use reasoning effort {effort}")
+        if not profile.get("description"):
+            errors.append(f"agent profile {name}.toml must have a description")
+        if not profile.get("developer_instructions"):
+            errors.append(f"agent profile {name}.toml must have developer instructions")
+        expected_sandbox = "read-only" if read_only else None
+        if profile.get("sandbox_mode") != expected_sandbox:
+            errors.append(
+                f"agent profile {name}.toml must have sandbox_mode {expected_sandbox!r}"
+            )
     return errors
 
 
