@@ -16,8 +16,8 @@ Publication is manual. Leave each item unchecked until its command or observatio
 - [x] Run `gh auth status` and confirm the authenticated account is `sergyanin`. **Verified 2026-07-15.**
 - [x] Create the public repository `sergyanin/senior-sol`, configure `origin`, and confirm public visibility. **Verified 2026-07-15: https://github.com/sergyanin/senior-sol.**
 - [x] Open draft PR #1 from `feat/initial-plugin` to `main` and confirm its Windows and Ubuntu checks pass. **Verified 2026-07-15: https://github.com/sergyanin/senior-sol/pull/1.**
-- [ ] Ensure the release branch is integrated into `main`, then run `git push -u origin main`.
-- [ ] Confirm the pushed `main` commit matches the locally verified commit.
+- [x] Ensure the release branch is integrated into `main`, then run `git push -u origin main`. **Verified 2026-07-15 by squash-merging PR #1 as `258186b`.**
+- [x] Confirm the pushed `main` commit matches the locally verified commit. **Verified 2026-07-15: local and `origin/main` are `258186b`; 55 tests and official plugin validation passed on merged `main`.**
 
 ## Marketplace installation and smoke evidence
 
@@ -36,7 +36,7 @@ Publication is manual. Leave each item unchecked until its command or observatio
 
 ## Manual publication
 
-- [ ] Review the final diff and confirm no CI wrappers, release automation, or publication credentials were added for this release task.
+- [x] Review the final diff and confirm no CI wrappers, release automation, or publication credentials were added for this release task. **Verified 2026-07-15 by final whole-branch review.**
 - [ ] Create the annotated tag with `git tag -a v0.1.0 -m "Senior Sol v0.1.0"`.
 - [ ] Push tag `v0.1.0` with `git push origin v0.1.0`.
 - [ ] Create the GitHub Release with `gh release create v0.1.0 --title "Senior Sol v0.1.0" --notes-file docs/release-checklist.md`.

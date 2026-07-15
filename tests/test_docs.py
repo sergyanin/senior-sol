@@ -95,14 +95,15 @@ class DocumentationTests(unittest.TestCase):
             "- [x] Run `gh auth status` and confirm the authenticated account is `sergyanin`. **Verified 2026-07-15.**",
             "- [x] Create the public repository `sergyanin/senior-sol`, configure `origin`, and confirm public visibility. **Verified 2026-07-15: https://github.com/sergyanin/senior-sol.**",
             "- [x] Open draft PR #1 from `feat/initial-plugin` to `main` and confirm its Windows and Ubuntu checks pass. **Verified 2026-07-15: https://github.com/sergyanin/senior-sol/pull/1.**",
+            "- [x] Ensure the release branch is integrated into `main`, then run `git push -u origin main`. **Verified 2026-07-15 by squash-merging PR #1 as `258186b`.**",
+            "- [x] Confirm the pushed `main` commit matches the locally verified commit. **Verified 2026-07-15: local and `origin/main` are `258186b`; 55 tests and official plugin validation passed on merged `main`.**",
+            "- [x] Review the final diff and confirm no CI wrappers, release automation, or publication credentials were added for this release task. **Verified 2026-07-15 by final whole-branch review.**",
         ]
         for item in completed_github_items:
             with self.subTest(completed_github_item=item):
                 self.assertIn(item, checklist)
 
         pending_publication_items = [
-            "- [ ] Ensure the release branch is integrated into `main`, then run `git push -u origin main`.",
-            "- [ ] Confirm the pushed `main` commit matches the locally verified commit.",
             "- [ ] Add the marketplace from GitHub with `codex plugin marketplace add sergyanin/senior-sol`.",
             "- [ ] Complete marketplace installation with `codex plugin add senior-sol@senior-sol`.",
             "- [ ] Install all five managed profiles with the OS-appropriate repository script.",
