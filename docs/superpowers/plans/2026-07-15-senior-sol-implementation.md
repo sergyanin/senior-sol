@@ -94,6 +94,7 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(data["license"], "MIT")
         self.assertEqual(data["repository"], "https://github.com/sergyanin/senior-sol")
         self.assertEqual(data["author"]["name"], "sergyanin")
+        self.assertEqual(data["interface"]["capabilities"], ["Read", "Write"])
 
     def test_marketplace_points_to_plugin(self):
         data = json.loads((ROOT / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
@@ -144,6 +145,7 @@ Create `plugins/senior-sol/.codex-plugin/plugin.json`:
     "longDescription": "Keep architecture and acceptance in the Sol thread while routing investigations and implementation to model-specific Codex subagents.",
     "developerName": "sergyanin",
     "category": "Productivity",
+    "capabilities": ["Read", "Write"],
     "defaultPrompt": ["Use Senior Sol to orchestrate this multi-step task."]
   }
 }
@@ -204,6 +206,8 @@ def validate_repository(root: Path) -> list[str]:
         errors.append("plugin folder and manifest name must both be senior-sol")
     if manifest.get("version") != "0.1.0":
         errors.append("plugin version must be 0.1.0")
+    if manifest.get("interface", {}).get("capabilities") != ["Read", "Write"]:
+        errors.append("plugin capabilities must be exactly Read and Write")
     entries = marketplace.get("plugins", [])
     if len(entries) != 1 or entries[0].get("name") != manifest.get("name"):
         errors.append("marketplace must contain exactly the senior-sol plugin")

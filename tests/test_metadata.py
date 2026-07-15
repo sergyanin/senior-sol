@@ -15,6 +15,7 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(data["license"], "MIT")
         self.assertEqual(data["repository"], "https://github.com/sergyanin/senior-sol")
         self.assertEqual(data["author"]["name"], "sergyanin")
+        self.assertEqual(data["interface"]["capabilities"], ["Read", "Write"])
 
     def test_marketplace_points_to_plugin(self):
         data = json.loads((ROOT / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))

@@ -20,6 +20,8 @@ def validate_repository(root: Path) -> list[str]:
         errors.append("plugin folder and manifest name must both be senior-sol")
     if manifest.get("version") != "0.1.0":
         errors.append("plugin version must be 0.1.0")
+    if manifest.get("interface", {}).get("capabilities") != ["Read", "Write"]:
+        errors.append("plugin capabilities must be exactly Read and Write")
     entries = marketplace.get("plugins", [])
     if len(entries) != 1 or entries[0].get("name") != manifest.get("name"):
         errors.append("marketplace must contain exactly the senior-sol plugin")

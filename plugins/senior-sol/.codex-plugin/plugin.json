@@ -17,6 +17,7 @@
     "longDescription": "Keep architecture and acceptance in the Sol thread while routing investigations and implementation to model-specific Codex subagents.",
     "developerName": "sergyanin",
     "category": "Productivity",
+    "capabilities": ["Read", "Write"],
     "defaultPrompt": ["Use Senior Sol to orchestrate this multi-step task."]
   }
 }
