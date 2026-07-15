@@ -22,6 +22,18 @@ def validate_data(manifest, marketplace):
 
 
 class MetadataTests(unittest.TestCase):
+    def test_validation_wrappers_and_ci_workflow(self):
+        self.assertTrue((ROOT / "scripts" / "validate.ps1").is_file())
+        self.assertTrue((ROOT / "scripts" / "validate.sh").is_file())
+
+        workflow_path = ROOT / ".github" / "workflows" / "ci.yml"
+        self.assertTrue(workflow_path.is_file())
+        workflow = workflow_path.read_text(encoding="utf-8")
+        self.assertIn("ubuntu-latest", workflow)
+        self.assertIn("windows-latest", workflow)
+        self.assertIn("python -m unittest discover -s tests -v", workflow)
+        self.assertIn("python scripts/validate.py", workflow)
+
     def test_plugin_manifest(self):
         data = json.loads((PLUGIN / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
         self.assertEqual(data["name"], "senior-sol")
