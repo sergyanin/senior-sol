@@ -93,6 +93,7 @@ class MetadataTests(unittest.TestCase):
         self.assertEqual(data["skills"], "./skills/")
         self.assertEqual(data["license"], "MIT")
         self.assertEqual(data["repository"], "https://github.com/sergyanin/senior-sol")
+        self.assertEqual(data["author"]["name"], "sergyanin")
 
     def test_marketplace_points_to_plugin(self):
         data = json.loads((ROOT / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8"))
@@ -128,6 +129,11 @@ Create `plugins/senior-sol/.codex-plugin/plugin.json`:
   "name": "senior-sol",
   "version": "0.1.0",
   "description": "Tech-lead orchestration for Codex: Sol decides, Terra investigates, and Luna implements.",
+  "author": {
+    "name": "sergyanin",
+    "email": "sergyanin@users.noreply.github.com",
+    "url": "https://github.com/sergyanin"
+  },
   "license": "MIT",
   "repository": "https://github.com/sergyanin/senior-sol",
   "keywords": ["codex", "orchestration", "subagents", "sol", "terra", "luna"],
