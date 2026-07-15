@@ -5,7 +5,7 @@ Publication is manual. Leave each item unchecked until its command or observatio
 ## Local and cross-platform verification
 
 - [x] On Windows, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures. **Verified 2026-07-15 via `scripts/validate.ps1`.**
-- [ ] On macOS or Linux, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures.
+- [x] On macOS or Linux, run `python -m unittest discover -s tests -v` in a clean checkout and record zero failures. **Verified 2026-07-15 on GitHub Actions `ubuntu-latest`.**
 - [x] Run repository and marketplace validation with `python scripts/validate.py` and record `Repository metadata is valid.` **Verified 2026-07-15.**
 - [x] Run official plugin validation for `plugins/senior-sol` from PowerShell with `python (Join-Path $HOME '.codex\skills\.system\plugin-creator\scripts\validate_plugin.py') plugins\senior-sol`; attach the successful output. This validator checks the plugin directory, not the marketplace file. **Verified 2026-07-15; validator exited 0.**
 - [x] Confirm the PowerShell and POSIX installer tests cover clean install, idempotent install, conflict refusal, forced replacement, and safe uninstall. **Verified 2026-07-15; isolated PowerShell install also produced exactly five managed profiles and safe uninstall preserved the `agents` directory.**
@@ -13,8 +13,9 @@ Publication is manual. Leave each item unchecked until its command or observatio
 
 ## GitHub preparation
 
-- [ ] Run `gh auth status` and confirm the authenticated account is `sergyanin`.
-- [ ] Create the public repository with `gh repo create sergyanin/senior-sol --public --source . --remote origin`.
+- [x] Run `gh auth status` and confirm the authenticated account is `sergyanin`. **Verified 2026-07-15.**
+- [x] Create the public repository `sergyanin/senior-sol`, configure `origin`, and confirm public visibility. **Verified 2026-07-15: https://github.com/sergyanin/senior-sol.**
+- [x] Open draft PR #1 from `feat/initial-plugin` to `main` and confirm its Windows and Ubuntu checks pass. **Verified 2026-07-15: https://github.com/sergyanin/senior-sol/pull/1.**
 - [ ] Ensure the release branch is integrated into `main`, then run `git push -u origin main`.
 - [ ] Confirm the pushed `main` commit matches the locally verified commit.
 
