@@ -8,8 +8,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugins" / "senior-sol"
-INSTALL_SCRIPT = PLUGIN / "scripts" / "install-agents.ps1"
-UNINSTALL_SCRIPT = PLUGIN / "scripts" / "uninstall-agents.ps1"
+POWERSHELL_INSTALL_SCRIPT = PLUGIN / "scripts" / "install-agents.ps1"
+POWERSHELL_UNINSTALL_SCRIPT = PLUGIN / "scripts" / "uninstall-agents.ps1"
+POSIX_INSTALL_SCRIPT = PLUGIN / "scripts" / "install-agents.sh"
+POSIX_UNINSTALL_SCRIPT = PLUGIN / "scripts" / "uninstall-agents.sh"
 MANAGED_FILES = {
     "senior-sol-luna-low.toml",
     "senior-sol-luna-medium.toml",
@@ -23,11 +25,21 @@ def powershell_executable():
     return shutil.which("pwsh") or shutil.which("powershell")
 
 
-def run_script(executable, script, codex_home, *args):
+def bash_executable():
+    if os.name == "nt":
+        git = shutil.which("git")
+        if git:
+            git_bash = Path(git).resolve().parent.parent / "bin" / "bash.exe"
+            if git_bash.is_file():
+                return str(git_bash)
+    return shutil.which("bash")
+
+
+def run_script(command, codex_home):
     env = os.environ.copy()
     env["CODEX_HOME"] = str(codex_home)
     return subprocess.run(
-        [executable, "-NoProfile", "-File", str(script), *args],
+        command,
         text=True,
         capture_output=True,
         env=env,
@@ -35,13 +47,7 @@ def run_script(executable, script, codex_home, *args):
     )
 
 
-class PowerShellInstallerTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.executable = powershell_executable()
-        if cls.executable is None:
-            raise unittest.SkipTest("PowerShell is not available")
-
+class InstallerContract:
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary_directory.cleanup)
@@ -49,10 +55,10 @@ class PowerShellInstallerTests(unittest.TestCase):
         self.target = self.codex_home / "agents"
 
     def install(self, *args):
-        return run_script(self.executable, INSTALL_SCRIPT, self.codex_home, *args)
+        return run_script(self.install_command(*args), self.codex_home)
 
     def uninstall(self):
-        return run_script(self.executable, UNINSTALL_SCRIPT, self.codex_home)
+        return run_script(self.uninstall_command(), self.codex_home)
 
     def test_clean_install_creates_exactly_the_managed_files(self):
         result = self.install()
@@ -86,7 +92,7 @@ class PowerShellInstallerTests(unittest.TestCase):
         self.assertIn(f"conflict: {name}", conflict.stdout)
         self.assertEqual(destination.read_text(encoding="utf-8"), "locally modified\n")
 
-        forced = self.install("-Force")
+        forced = self.install(self.force_argument)
 
         self.assertEqual(forced.returncode, 0, forced.stderr)
         self.assertIn(f"replaced: {name}", forced.stdout)
@@ -117,6 +123,49 @@ class PowerShellInstallerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(same_named_directory.is_dir())
         self.assertIn(f"missing: {name}", result.stdout)
+
+
+class PowerShellInstallerTests(InstallerContract, unittest.TestCase):
+    force_argument = "-Force"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.executable = powershell_executable()
+        if cls.executable is None:
+            raise unittest.SkipTest("PowerShell is not available")
+
+    def install_command(self, *args):
+        return [
+            self.executable,
+            "-NoProfile",
+            "-File",
+            str(POWERSHELL_INSTALL_SCRIPT),
+            *args,
+        ]
+
+    def uninstall_command(self):
+        return [
+            self.executable,
+            "-NoProfile",
+            "-File",
+            str(POWERSHELL_UNINSTALL_SCRIPT),
+        ]
+
+
+class PosixInstallerTests(InstallerContract, unittest.TestCase):
+    force_argument = "--force"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.executable = bash_executable()
+        if cls.executable is None:
+            raise unittest.SkipTest("bash is not available")
+
+    def install_command(self, *args):
+        return [self.executable, str(POSIX_INSTALL_SCRIPT), *args]
+
+    def uninstall_command(self):
+        return [self.executable, str(POSIX_UNINSTALL_SCRIPT)]
 
 
 if __name__ == "__main__":
