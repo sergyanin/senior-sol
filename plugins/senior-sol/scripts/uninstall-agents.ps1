@@ -16,7 +16,7 @@ try {
 
     foreach ($name in $names) {
         $path = Join-Path $target $name
-        if (Test-Path -LiteralPath $path) {
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
             Remove-Item -LiteralPath $path
             Write-Output "removed: $name"
         }

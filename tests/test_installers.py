@@ -106,6 +106,18 @@ class PowerShellInstallerTests(unittest.TestCase):
         for name in MANAGED_FILES:
             self.assertIn(f"removed: {name}", result.stdout)
 
+    def test_uninstall_preserves_directory_with_managed_filename(self):
+        self.target.mkdir()
+        name = "senior-sol-luna-low.toml"
+        same_named_directory = self.target / name
+        same_named_directory.mkdir()
+
+        result = self.uninstall()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(same_named_directory.is_dir())
+        self.assertIn(f"missing: {name}", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
