@@ -1,0 +1,22 @@
+{
+  "name": "senior-sol",
+  "version": "0.1.0",
+  "description": "Tech-lead orchestration for Codex: Sol decides, Terra investigates, and Luna implements.",
+  "author": {
+    "name": "sergyanin",
+    "email": "sergyanin@users.noreply.github.com",
+    "url": "https://github.com/sergyanin"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/sergyanin/senior-sol",
+  "keywords": ["codex", "orchestration", "subagents", "sol", "terra", "luna"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Senior Sol",
+    "shortDescription": "Sol decides; Terra and Luna execute",
+    "longDescription": "Keep architecture and acceptance in the Sol thread while routing investigations and implementation to model-specific Codex subagents.",
+    "developerName": "sergyanin",
+    "category": "Productivity",
+    "defaultPrompt": ["Use Senior Sol to orchestrate this multi-step task."]
+  }
+}
