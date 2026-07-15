@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -14,6 +15,58 @@ MANAGED_PROFILES = {
     "senior-sol-terra-high": ("gpt-5.6-terra", "high", True),
 }
 
+TEXT_SUFFIXES = {
+    ".json",
+    ".md",
+    ".ps1",
+    ".py",
+    ".sh",
+    ".toml",
+    ".txt",
+    ".yaml",
+    ".yml",
+}
+INCOMPLETE_MARKER = re.compile(
+    r"\b(?:"
+    + "|".join(
+        ("TO" + "DO", "T" + "BD", "FIX" + "ME", "X" * 3, "PLACE" + "HOLDER")
+    )
+    + r")\b",
+    re.IGNORECASE,
+)
+LOCAL_ABSOLUTE_PATH = re.compile(
+    r"(?:[A-Za-z]:[\\/](?![\\/])|(?<![A-Za-z0-9@])/(?:Users|home)/)[^\s`\"']+"
+)
+
+
+def _frontmatter(text: str) -> dict[str, str] | None:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    try:
+        closing = next(index for index, line in enumerate(lines[1:], 1) if line.strip() == "---")
+    except StopIteration:
+        return None
+    values: dict[str, str] = {}
+    for line in lines[1:closing]:
+        if ":" in line:
+            key, value = line.split(":", 1)
+            values[key.strip()] = value.strip()
+    return values
+
+
+def _public_runtime_text_files(root: Path) -> list[Path]:
+    files: set[Path] = set()
+    for directory in (root / ".agents", root / "docs", root / "plugins", root / "scripts"):
+        if directory.exists():
+            files.update(path for path in directory.rglob("*") if path.is_file())
+    files.update(
+        path
+        for path in root.iterdir()
+        if path.is_file() and path.suffix.lower() in TEXT_SUFFIXES
+    )
+    return sorted(path for path in files if path.suffix.lower() in TEXT_SUFFIXES)
+
 
 def validate_repository(root: Path) -> list[str]:
     errors: list[str] = []
@@ -26,17 +79,22 @@ def validate_repository(root: Path) -> list[str]:
     except (OSError, json.JSONDecodeError) as exc:
         return [str(exc)]
 
-    if not isinstance(manifest, dict):
+    manifest_is_object = isinstance(manifest, dict)
+    marketplace_is_object = isinstance(marketplace, dict)
+    if not manifest_is_object:
         errors.append("plugin manifest must be a JSON object")
-    if not isinstance(marketplace, dict):
+        manifest = {}
+    if not marketplace_is_object:
         errors.append("marketplace must be a JSON object")
-    if errors:
-        return errors
+        marketplace = {}
 
     if manifest.get("name") != plugin.name:
         errors.append("plugin folder and manifest name must both be senior-sol")
     if manifest.get("version") != "0.1.0":
         errors.append("plugin version must be 0.1.0")
+    skills_path = manifest.get("skills")
+    if skills_path != "./skills/":
+        errors.append("plugin skills path must be ./skills/")
     interface = manifest.get("interface", {})
     if not isinstance(interface, dict):
         errors.append("plugin interface must be a JSON object")
@@ -45,12 +103,12 @@ def validate_repository(root: Path) -> list[str]:
     entries = marketplace.get("plugins", [])
     if not isinstance(entries, list):
         errors.append("marketplace plugins must be a JSON array")
-        return errors
-    if len(entries) != 1:
+        entries = []
+    if marketplace_is_object and len(entries) != 1:
         errors.append("marketplace must contain exactly the senior-sol plugin")
-    elif not isinstance(entries[0], dict):
+    if len(entries) == 1 and not isinstance(entries[0], dict):
         errors.append("marketplace plugin entry must be a JSON object")
-    else:
+    elif len(entries) == 1:
         entry = entries[0]
         if entry.get("name") != manifest.get("name"):
             errors.append("marketplace must contain exactly the senior-sol plugin")
@@ -92,6 +150,35 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(
                 f"agent profile {name}.toml must have sandbox_mode {expected_sandbox!r}"
             )
+
+    skill_path = plugin / "skills" / "senior-sol" / "SKILL.md"
+    if not skill_path.is_file():
+        errors.append("missing Senior Sol skill: plugins/senior-sol/skills/senior-sol/SKILL.md")
+    else:
+        try:
+            skill_text = skill_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            errors.append(f"cannot read Senior Sol skill: {exc}")
+        else:
+            metadata = _frontmatter(skill_text)
+            if metadata is None:
+                errors.append("Senior Sol skill must have opening frontmatter delimiters")
+            elif metadata.get("name") != "senior-sol":
+                errors.append("Senior Sol skill frontmatter must declare name: senior-sol")
+
+    for path in _public_runtime_text_files(root):
+        relative = path.relative_to(root).as_posix()
+        if relative.startswith("docs/superpowers/"):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            errors.append(f"cannot scan tracked text {relative}: {exc}")
+            continue
+        if LOCAL_ABSOLUTE_PATH.search(text):
+            errors.append(f"local absolute path found in {relative}")
+        if INCOMPLETE_MARKER.search(text):
+            errors.append(f"incomplete marker found in {relative}")
     return errors
 
 
