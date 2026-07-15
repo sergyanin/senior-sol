@@ -48,23 +48,23 @@ LOCAL_ABSOLUTE_PATH = re.compile(
     r")"
 )
 DOCUMENTATION_URL = re.compile(r"\b(?:https?|git\+https)://[^\s`\"'<>]+", re.IGNORECASE)
-_CREDENTIAL_KEYS = (
+_CREDENTIAL_SUFFIXES = (
     "api_" + "key",
-    "api-" + "key",
     "client_" + "secret",
-    "client-" + "secret",
     "access_" + "token",
-    "access-" + "token",
+    "secret_" + "access_key",
+    "access_" + "key",
+    "private_" + "key",
     "to" + "ken",
     "pass" + "word",
     "pass" + "wd",
     "sec" + "ret",
 )
 CREDENTIAL_ASSIGNMENT = re.compile(
-    r"(?<![A-Za-z0-9_])(?:"
-    + "|".join(re.escape(key) for key in _CREDENTIAL_KEYS)
-    + r")[\s\"']*[:=]\s*(?P<value>[^#\r\n]+)",
-    re.IGNORECASE,
+    r"^[ \t]*(?:(?:export|const|let|var)[ \t]+)?[\"']?"
+    r"(?P<identifier>[A-Za-z_][A-Za-z0-9_-]*)[\"']?[ \t]*[:=][ \t]*"
+    r"(?P<value>[^#\r\n]+)",
+    re.IGNORECASE | re.MULTILINE,
 )
 
 
@@ -121,13 +121,23 @@ def _has_nontrivial_credential_assignment(text: str) -> bool:
     dynamic_prefixes = (
         "${",
         "$env:",
+        "os.getenv(",
         "os.environ",
+        "environ.get(",
         "getenv(",
         "process.env",
         "secrets.",
         "env[",
+        "environment.getenvironmentvariable(",
+        "system.getenv(",
     )
     for match in CREDENTIAL_ASSIGNMENT.finditer(text):
+        identifier = match.group("identifier").strip("_-").replace("-", "_").lower()
+        if not any(
+            identifier == suffix or identifier.endswith("_" + suffix)
+            for suffix in _CREDENTIAL_SUFFIXES
+        ):
+            continue
         value = match.group("value").strip().rstrip(",;").strip().strip("\"'").strip()
         lowered = value.lower()
         if lowered in placeholders or lowered.startswith(dynamic_prefixes):

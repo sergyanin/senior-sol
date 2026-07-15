@@ -22,6 +22,7 @@
 - Installers never overwrite conflicting agent files unless the user passes `--force` or `-Force`.
 - Installers reject an `agents` directory or managed destination that is a directory, symlink, or reparse redirection, including in force mode; recursive test cleanup paths are verified under the system temp directory.
 - Uninstallers touch only the five exact managed filenames and never remove the containing `agents` directory.
+- Uninstallers apply the same real-directory symlink/reparse guard before deletion, so redirected external managed files remain untouched.
 - Sol accepts writer work only after inspecting actual changed paths/content and independently rerunning or directly observing the exact definition-of-done check.
 - An unavailable installed model/effort is not a model failure: retry once with the nearest same-role profile (Terra remains read-only), then warn and offer built-in `worker`/`explorer` without incrementing the two-failure counter.
 - Repository validation enforces every required marketplace/plugin field and shape, including exact policy/capabilities and plugin version `0.1.0`; marketplace entries have no version field.
@@ -598,7 +599,7 @@ Use the concrete contract text above in the actual skill and add one fully speci
 
 - [ ] **Step 4: Extend repository validation for skill integrity**
 
-Update `validate_repository` to require the skill path from `manifest["skills"]`, parse the opening YAML-like frontmatter delimiters, require `name: senior-sol`, and use `git ls-files` (with an explicit complete fallback for isolated tests) to scan every public tracked text file, including `.github/` and tests. Exclude only design/plan artifacts under `docs/superpowers/`; reject nontrivial credential assignments, broad Windows/Unix machine-local absolute paths, and incomplete markers without treating documentation URLs or the detector's own source as findings. Return errors instead of exiting early.
+Update `validate_repository` to require the skill path from `manifest["skills"]`, parse the opening YAML-like frontmatter delimiters, require `name: senior-sol`, and use `git ls-files` (with an explicit complete fallback for isolated tests) to scan every public tracked text file, including `.github/` and tests. Exclude only design/plan artifacts under `docs/superpowers/`; parse complete assignment identifiers and reject nontrivial values for common credential suffixes (including prefixed API keys, tokens, and secret access keys), broad Windows/Unix machine-local absolute paths, and incomplete markers without treating dynamic environment lookups, documentation URLs, or the detector's own source as findings. Return errors instead of exiting early.
 
 - [ ] **Step 5: Run skill, metadata, and profile tests**
 

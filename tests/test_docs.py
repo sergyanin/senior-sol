@@ -105,7 +105,7 @@ class DocumentationTests(unittest.TestCase):
             "- [ ] Execute and record Scenario 4, overlapping writer serialization.",
             "- [ ] Execute and record Scenario 5, corrected specification after first failure.",
             "- [ ] Execute and record Scenario 6, announced bounded Sol fallback after second failure.",
-            "- [ ] Execute and record Scenario 7, built-in fallback warning when managed profiles are absent.",
+            "- [ ] Execute and record Scenario 7, installed-profile same-role retry and warned built-in fallback.",
             "- [ ] Create the annotated tag with `git tag -a v0.1.0 -m \"Senior Sol v0.1.0\"`.",
             "- [ ] Push tag `v0.1.0` with `git push origin v0.1.0`.",
             "- [ ] Create the GitHub Release with `gh release create v0.1.0 --title \"Senior Sol v0.1.0\" --notes-file docs/release-checklist.md`.",
@@ -137,6 +137,42 @@ class DocumentationTests(unittest.TestCase):
         self.assertIn(
             "sh plugins/senior-sol/scripts/install-agents.sh --force",
             readme,
+        )
+
+    def test_manual_release_docs_cover_installed_profile_availability_fallback(self):
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        scenarios = (ROOT / "docs" / "examples" / "delegation-scenarios.md").read_text(
+            encoding="utf-8"
+        )
+        checklist = (ROOT / "docs" / "release-checklist.md").read_text(encoding="utf-8")
+
+        for phrase in (
+            "installed managed profile's model or reasoning effort is unavailable",
+            "nearest available profile of the same role",
+            "Terra remains read-only",
+            "does not count toward the two model-failure attempts",
+            "built-in `worker` or `explorer`",
+        ):
+            with self.subTest(readme_phrase=phrase):
+                self.assertIn(phrase, readme)
+
+        for phrase in (
+            "installed-but-unavailable profile",
+            "exactly one same-role retry",
+            "leaves the two-attempt fallback counter unchanged",
+        ):
+            with self.subTest(scenario_phrase=phrase):
+                self.assertIn(phrase, scenarios)
+
+        self.assertIn(
+            "## Scenario 7 — Installed-profile same-role retry and built-in fallback",
+            scenarios,
+        )
+
+        self.assertIn(
+            "- [ ] Execute and record Scenario 7, installed-profile same-role retry "
+            "and warned built-in fallback.",
+            checklist,
         )
 
 

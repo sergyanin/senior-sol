@@ -68,6 +68,44 @@ class InstallerContract:
     def uninstall(self):
         return run_script(self.uninstall_command(), self.codex_home)
 
+    def create_directory_redirect(self, link, target):
+        symlink_error = None
+        try:
+            link.symlink_to(target, target_is_directory=True)
+            kind = "symlink"
+        except OSError as exc:
+            symlink_error = exc
+            if os.name != "nt":
+                self.skipTest(f"directory symlink creation unavailable: {exc}")
+            junction = subprocess.run(
+                ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if junction.returncode != 0:
+                self.skipTest(
+                    "directory redirect creation unavailable: "
+                    f"symlink failed ({symlink_error}); junction failed ({junction.stderr.strip()})"
+                )
+            kind = "junction"
+        self.addCleanup(self.remove_directory_redirect, link)
+        return kind
+
+    def remove_directory_redirect(self, link):
+        absolute_link = Path(os.path.abspath(link))
+        self.assertEqual(
+            os.path.commonpath((str(absolute_link), str(self.workspace))),
+            str(self.workspace),
+            "redirect cleanup target must remain under the verified temp workspace",
+        )
+        if not os.path.lexists(absolute_link):
+            return
+        if absolute_link.is_symlink():
+            absolute_link.unlink()
+        else:
+            os.rmdir(absolute_link)
+
     def test_clean_install_creates_exactly_the_managed_files(self):
         result = self.install()
 
@@ -119,37 +157,47 @@ class InstallerContract:
                 self.assertTrue(destination.is_dir())
                 self.assertFalse(any(destination.iterdir()))
 
-    def test_managed_destination_symlink_is_rejected_even_with_force(self):
+    def test_managed_destination_redirect_is_rejected_even_with_force(self):
         self.target.mkdir()
         name = "senior-sol-luna-low.toml"
-        outside = self.workspace / "outside-managed.toml"
-        outside.write_text("outside\n", encoding="utf-8")
+        outside = self.workspace / "outside-managed"
+        outside.mkdir()
+        sentinel = outside / "sentinel.txt"
+        sentinel.write_text("outside\n", encoding="utf-8")
         destination = self.target / name
-        try:
-            destination.symlink_to(outside)
-        except OSError as exc:
-            self.skipTest(f"symlink creation unavailable on this platform: {exc}")
+        self.create_directory_redirect(destination, outside)
 
         for argument in ((), (self.force_argument,)):
             with self.subTest(argument=argument):
                 result = self.install(*argument)
                 self.assertNotEqual(result.returncode, 0)
-                self.assertTrue(destination.is_symlink())
-                self.assertEqual(outside.read_text(encoding="utf-8"), "outside\n")
+                self.assertTrue(os.path.lexists(destination))
+                self.assertEqual(sentinel.read_text(encoding="utf-8"), "outside\n")
+                self.assertEqual({path.name for path in outside.iterdir()}, {"sentinel.txt"})
 
     def test_agents_directory_symlink_is_rejected_without_writing_through_it(self):
         outside = self.workspace / "outside-agents"
         outside.mkdir()
-        try:
-            self.target.symlink_to(outside, target_is_directory=True)
-        except OSError as exc:
-            self.skipTest(f"directory symlink creation unavailable on this platform: {exc}")
+        self.create_directory_redirect(self.target, outside)
 
         result = self.install(self.force_argument)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertTrue(self.target.is_symlink())
+        self.assertTrue(os.path.lexists(self.target))
         self.assertEqual(list(outside.iterdir()), [])
+
+    def test_uninstall_rejects_redirected_agents_directory_without_deleting_external_files(self):
+        outside = self.workspace / "outside-uninstall-agents"
+        outside.mkdir()
+        managed = outside / "senior-sol-luna-low.toml"
+        managed.write_text("outside managed file\n", encoding="utf-8")
+        self.create_directory_redirect(self.target, outside)
+
+        result = self.uninstall()
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(managed.read_text(encoding="utf-8"), "outside managed file\n")
+        self.assertEqual({path.name for path in outside.iterdir()}, {managed.name})
 
     def test_uninstall_removes_managed_files_and_preserves_unrelated_file(self):
         self.assertEqual(self.install().returncode, 0)

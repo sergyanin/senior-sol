@@ -134,13 +134,13 @@ State the policy decision before any implementation. Then provide the exact fall
 
 **Failure signal:** Sol silently enters fallback, retries a third delegation, includes `src/cli.py` in scope, weakens the exception or verification constraints, edits files during the simulation, or omits the required final disclosure.
 
-## Scenario 7 — Availability routing and built-in fallback warning
+## Scenario 7 — Installed-profile same-role retry and built-in fallback
 
 **Setup:** First use an isolated `CODEX_HOME` with all five `senior-sol-*` TOML profiles installed, but make the selected Terra model/effort unavailable. Make the nearest same-role Terra profile unavailable after the one retry as well. Then repeat in an isolated `CODEX_HOME` without the five profiles and decline or make unavailable the offered installer.
 
 **Prompt:** `$senior-sol Investigate this multi-step issue using the available agents.`
 
-**Expected routing:** For the installed-but-unavailable profile, Sol does not count availability as either model-failure attempt, retries once with the nearest Terra profile while preserving read-only intent, then warns and offers built-in `explorer` without incrementing the fallback counter. For missing profiles, Sol explains reduced guarantees, asks before installation, and—only after installation is declined or unavailable—offers a suitable built-in worker or explorer.
+**Expected routing:** For the installed-but-unavailable profile, Sol does not count availability as either model-failure attempt, retries once with the nearest available profile of the same role while preserving Terra read-only intent, then warns and offers the built-in `explorer` fallback without incrementing the fallback counter. For missing profiles, Sol explains reduced guarantees, asks before installation, and—only after installation is declined or unavailable—offers a suitable built-in worker or explorer.
 
 **Expected evidence:** The transcript distinguishes availability failures from model failures, records exactly one same-role retry, keeps Terra read-only, leaves the two-attempt fallback counter unchanged, and explicitly warns that the built-in agent model and reasoning effort are not pinned; researcher and writer acceptance schemas still apply.
 

@@ -31,7 +31,7 @@ Publication is manual. Leave each item unchecked until its command or observatio
 - [ ] Execute and record Scenario 4, overlapping writer serialization.
 - [ ] Execute and record Scenario 5, corrected specification after first failure.
 - [ ] Execute and record Scenario 6, announced bounded Sol fallback after second failure.
-- [ ] Execute and record Scenario 7, built-in fallback warning when managed profiles are absent.
+- [ ] Execute and record Scenario 7, installed-profile same-role retry and warned built-in fallback.
 
 ## Manual publication
 

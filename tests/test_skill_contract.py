@@ -232,6 +232,53 @@ class SkillValidatorTests(unittest.TestCase):
         self.assertIn("credential assignment found in .github/workflows/leak.yml", errors)
         self.assertIn("credential assignment found in tests/credential-fixture.txt", errors)
 
+    def test_validator_detects_prefixed_credential_identifiers(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            fixture = root / "tests" / "prefixed-credentials.txt"
+            identifiers = (
+                "OPENAI_" + "API_KEY",
+                "GITHUB_" + "TOKEN",
+                "AWS_" + "SECRET_ACCESS_KEY",
+            )
+            fixture.write_text(
+                "\n".join(
+                    f'{identifier}="live-{index}-credential-value"'
+                    for index, identifier in enumerate(identifiers, 1)
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            track_all_files(root)
+
+            errors = validate_repository(root)
+
+        self.assertIn("credential assignment found in tests/prefixed-credentials.txt", errors)
+
+    def test_validator_ignores_prefixed_credentials_loaded_from_environment(self):
+        with copy_repository() as directory:
+            root = Path(directory)
+            fixture = root / "tests" / "dynamic-credentials.txt"
+            api_identifier = "OPENAI_" + "API_KEY"
+            token_identifier = "GITHUB_" + "TOKEN"
+            secret_identifier = "AWS_" + "SECRET_ACCESS_KEY"
+            client_identifier = "SERVICE_" + "CLIENT_SECRET"
+            access_identifier = "SERVICE_" + "ACCESS_TOKEN"
+            fixture.write_text(
+                f'{api_identifier} = os.getenv("API_KEY")\n'
+                f'{token_identifier} = os.environ["GITHUB_TOKEN"]\n'
+                f'{secret_identifier} = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY")\n'
+                f'{client_identifier} = getenv("CLIENT_SECRET")\n'
+                f'{access_identifier} = process.env.ACCESS_TOKEN\n'
+                f'{token_identifier} = $env:GITHUB_TOKEN\n',
+                encoding="utf-8",
+            )
+            track_all_files(root)
+
+            errors = validate_repository(root)
+
+        self.assertNotIn("credential assignment found in tests/dynamic-credentials.txt", errors)
+
     def test_validator_detects_broad_windows_and_unix_machine_local_paths(self):
         with copy_repository() as directory:
             root = Path(directory)

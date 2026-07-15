@@ -70,7 +70,9 @@ Senior Sol is opt-in and does not activate for ordinary requests.
 
 ## Fallback behavior
 
-If managed profiles are absent and installation is declined or unavailable, Senior Sol can use built-in worker and explorer agents only after warning that their model and reasoning effort are not pinned. The same acceptance and evidence gates still apply. See the [manual delegation scenarios](docs/examples/delegation-scenarios.md) for the expected routing and failure signals.
+If an installed managed profile's model or reasoning effort is unavailable, that availability failure does not count toward the two model-failure attempts. Senior Sol retries once with the nearest available profile of the same role; Terra remains read-only. If no same-role managed profile can run, Senior Sol warns the user and offers the built-in `worker` or `explorer` without incrementing the fallback counter, explaining that its model and reasoning effort are not pinned.
+
+If managed profiles are absent and installation is declined or unavailable, Senior Sol applies the same warning before offering a built-in agent. The same acceptance and evidence gates still apply. See the [manual delegation scenarios](docs/examples/delegation-scenarios.md) for the expected routing and failure signals.
 
 ## Update
 
