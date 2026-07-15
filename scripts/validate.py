@@ -16,17 +16,39 @@ def validate_repository(root: Path) -> list[str]:
     except (OSError, json.JSONDecodeError) as exc:
         return [str(exc)]
 
+    if not isinstance(manifest, dict):
+        errors.append("plugin manifest must be a JSON object")
+    if not isinstance(marketplace, dict):
+        errors.append("marketplace must be a JSON object")
+    if errors:
+        return errors
+
     if manifest.get("name") != plugin.name:
         errors.append("plugin folder and manifest name must both be senior-sol")
     if manifest.get("version") != "0.1.0":
         errors.append("plugin version must be 0.1.0")
-    if manifest.get("interface", {}).get("capabilities") != ["Read", "Write"]:
+    interface = manifest.get("interface", {})
+    if not isinstance(interface, dict):
+        errors.append("plugin interface must be a JSON object")
+    elif interface.get("capabilities") != ["Read", "Write"]:
         errors.append("plugin capabilities must be exactly Read and Write")
     entries = marketplace.get("plugins", [])
-    if len(entries) != 1 or entries[0].get("name") != manifest.get("name"):
+    if not isinstance(entries, list):
+        errors.append("marketplace plugins must be a JSON array")
+        return errors
+    if len(entries) != 1:
         errors.append("marketplace must contain exactly the senior-sol plugin")
-    if entries and entries[0].get("source", {}).get("path") != "./plugins/senior-sol":
-        errors.append("marketplace source path must be ./plugins/senior-sol")
+    elif not isinstance(entries[0], dict):
+        errors.append("marketplace plugin entry must be a JSON object")
+    else:
+        entry = entries[0]
+        if entry.get("name") != manifest.get("name"):
+            errors.append("marketplace must contain exactly the senior-sol plugin")
+        source = entry.get("source", {})
+        if not isinstance(source, dict):
+            errors.append("marketplace plugin source must be a JSON object")
+        elif source.get("path") != "./plugins/senior-sol":
+            errors.append("marketplace source path must be ./plugins/senior-sol")
     return errors
 
 
