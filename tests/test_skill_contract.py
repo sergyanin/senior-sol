@@ -120,6 +120,25 @@ class SkillContractTests(unittest.TestCase):
         for command in forbidden_commands:
             self.assertNotIn(command, SKILL_TEXT)
 
+    def test_startup_gate_uses_only_authoritative_exact_model_metadata(self):
+        required_phrases = (
+            "Model selection is an external prerequisite",
+            "Do not infer the main model from generic system identity text or model self-identification",
+            "If authoritative runtime metadata is unavailable, explicit invocation of `$senior-sol` is sufficient to continue",
+            "If authoritative runtime metadata explicitly identifies the configured main model as non-Sol, stop",
+        )
+        for phrase in required_phrases:
+            self.assertIn(phrase, SKILL_TEXT)
+        self.assertNotIn("visible runtime context", SKILL_TEXT)
+
+    def test_startup_gate_checks_only_installed_agent_profile_paths(self):
+        required_phrases = (
+            "check only the five exact files under `$CODEX_HOME/agents/`",
+            "Copies inside the plugin cache or plugin source do not count as installed profiles",
+        )
+        for phrase in required_phrases:
+            self.assertIn(phrase, SKILL_TEXT)
+
 
 class SkillValidatorTests(unittest.TestCase):
     def test_validator_requires_manifest_skill_path(self):

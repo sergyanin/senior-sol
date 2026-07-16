@@ -7,9 +7,9 @@ description: Use only when the user explicitly invokes Senior Sol or asks for Se
 
 ## Startup gate
 
-Do not change the main thread's model or reasoning effort. The user selects Sol and its effort. If the visible runtime context indicates that the main model is not Sol, stop and ask the user to select Sol before activation.
+Do not change the main thread's model or reasoning effort. Model selection is an external prerequisite owned by the user or invoking runtime. Do not infer the main model from generic system identity text or model self-identification; labels such as `Codex/GPT-5` are not authoritative configured-model metadata. If authoritative runtime metadata is unavailable, explicit invocation of `$senior-sol` is sufficient to continue. If authoritative runtime metadata explicitly identifies the configured main model as non-Sol, stop and ask the user to select Sol before activation.
 
-Resolve `CODEX_HOME`, then check for all five managed profiles: `senior-sol-luna-low`, `senior-sol-luna-medium`, `senior-sol-terra-low`, `senior-sol-terra-medium`, and `senior-sol-terra-high`. If any are missing, explain the reduced guarantees and ask before running the OS-appropriate installer located under this plugin's scripts directory. After installation, stop and ask the user to open a new Codex thread so custom agents are discovered. If installation is declined or unavailable, use built-in worker/explorer agents and explicitly warn that model and effort are not pinned.
+Resolve `CODEX_HOME`, then check only the five exact files under `$CODEX_HOME/agents/`: `senior-sol-luna-low.toml`, `senior-sol-luna-medium.toml`, `senior-sol-terra-low.toml`, `senior-sol-terra-medium.toml`, and `senior-sol-terra-high.toml`. Copies inside the plugin cache or plugin source do not count as installed profiles. If any are missing, explain the reduced guarantees and ask before running the OS-appropriate installer located under this plugin's scripts directory. After installation, stop and ask the user to open a new Codex thread so custom agents are discovered. If installation is declined or unavailable, use built-in worker/explorer agents and explicitly warn that model and effort are not pinned.
 
 ## Delegation matrix
 

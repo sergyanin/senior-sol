@@ -21,6 +21,8 @@ Publication is manual. Leave each item unchecked until its command or observatio
 
 ## Marketplace installation and smoke evidence
 
+**2026-07-16 rerun:** Release remains blocked at 3 PASS / 4 FAIL. The startup gate no longer rejects `gpt-5.6-sol`, and missing profiles are now checked only under `$CODEX_HOME/agents`. However, `codex-cli 0.144.5` did not expose a custom-agent selector to the delegation interface: spawned sessions reported `gpt-5.6-sol` rather than the requested Luna/Terra profiles, and Scenario 7 could not exercise managed-profile availability retry. Do not tag until the routing mechanism is redesigned or the runtime exposes custom-agent selection and all seven scenarios pass.
+
 - [x] Add the marketplace from GitHub with `codex plugin marketplace add sergyanin/senior-sol`. **Verified 2026-07-15; marketplace `senior-sol` is configured from the public repository.**
 - [x] Complete marketplace installation with `codex plugin add senior-sol@senior-sol`. **Verified 2026-07-15; plugin version `0.1.0` is installed and enabled in the Codex cache.**
 - [x] Install all five managed profiles with the OS-appropriate repository script. **Verified 2026-07-15; all five `senior-sol-*.toml` files are present under `$CODEX_HOME/agents`.**

@@ -25,3 +25,9 @@ The skill may stop only when authoritative runtime metadata explicitly identifie
 - The skill never changes the main model or reasoning effort.
 - Repository, plugin, and unit validation pass.
 - All seven release-smoke scenarios pass before release publication proceeds.
+
+## Smoke findings
+
+The rerun exposed a second startup issue: profile discovery must check only the five exact files under `$CODEX_HOME/agents`; templates inside the plugin cache are not installed profiles.
+
+It also exposed a release blocker outside this narrow fix. In `codex-cli 0.144.5`, the callable delegation interface used by the smoke run did not expose selection by custom-agent name. Spawned sessions reported `gpt-5.6-sol`, and Sol explicitly reported that the installed profile selector was unavailable. This design does not replace the custom-agent mechanism with nested `codex exec`; that would require a separate architecture decision.
